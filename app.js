@@ -1,11 +1,12 @@
 /* Mapa de Revistas: downloaded data only (no live API).
    Journals and impact metrics from SCImago (Scopus); Qualis strata from the Plataforma Sucupira, joined by ISSN.
-   A keyword "matches" a journal when it appears in the journal's title or in its Scopus subject categories or areas.
+   A keyword "matches" a journal when it appears in the journal's title, in its Scopus subject categories or areas, or in
+   an OpenAlex research topic (name or keywords) in which the journal has published (topics.json, OpenAlex snapshot).
    Each journal is one point: x = number of keywords that match it, y = the chosen impact metric. */
 "use strict";
 
 const STRATA = ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C"];
-const DATA_VERSION = "2026-10-23e";      // bump when data/*.json change, so browsers fetch the new files
+const DATA_VERSION = "2026-10-23f";      // bump when data/*.json change, so browsers fetch the new files
 const METRICS = {
   c3: { label: "Citações por artigo, 3 anos (Scopus)", get: (j) => j.c3, d: 2 },
   c2: { label: "Citações por documento, 2 anos (Scopus)", get: (j) => j.c2, d: 2 },
@@ -28,7 +29,17 @@ let yLog = store.get("mr.ylog", true);
 let yMetric = METRICS[store.get("mr.y", "c3")] ? store.get("mr.y", "c3") : "c3";
 let sortKey = "nkw", sortDir = -1;
 let matched = [], K = 0, keywords = [];
-let vocab = [];                          // indexed terms: [{term, kind, n}] from categories, areas and journal titles
+let vocab = [];                          // indexed terms: [{term, kind, n}] from categories, areas, titles and topics
+let topics = [], topicHay = [];          // OpenAlex topics [[name, [keywords]]] and their normalized search text
+const ABBR = {                           // abbreviations OpenAlex does not index, mapped to the indexed term
+  sfdi: "spatial frequency domain imaging", sfd: "spatial frequency domain imaging", dot: "diffuse optical tomography",
+  drs: "diffuse reflectance spectroscopy", oct: "optical coherence tomography", pdt: "photodynamic therapy",
+  pbm: "photobiomodulation", lllt: "low-level laser therapy", nirs: "near-infrared spectroscopy",
+  fnirs: "functional near-infrared spectroscopy", dcs: "diffuse correlation spectroscopy", lsci: "laser speckle contrast imaging",
+  pai: "photoacoustic imaging", pat: "photoacoustic tomography", flim: "fluorescence lifetime imaging", mc: "monte carlo",
+  mcml: "monte carlo", hsi: "hyperspectral imaging", ai: "artificial intelligence", ml: "machine learning",
+  cnn: "convolutional neural network", mri: "magnetic resonance imaging", ct: "computed tomography",
+};
 const STOP = new Set(("journal journals international research review reviews letters letter advances annals archives " +
   "bulletin proceedings transactions acta revista studies study series part section new current open society " +
   "and for the of in on de la et des der und del e y do da di a an to with from by at or its world global " +
@@ -47,21 +58,27 @@ function qColor(q) {
 /* ---------- data ---------- */
 async function loadData() {
   const get = async (f) => { const r = await fetch(`data/${f}?v=${DATA_VERSION}`); if (!r.ok) throw new Error(f); return r.json(); };
-  const [sc, ql] = await Promise.all([get("scimago.json"), get("qualis.json").catch(() => ({ areas: [], j: {}, meta: {} }))]);
+  const [sc, ql, tp] = await Promise.all([get("scimago.json"), get("qualis.json").catch(() => ({ areas: [], j: {}, meta: {} })),
+    get("topics.json").catch(() => ({ topics: [], j: {} }))]);
   cats = sc.cats;
+  topics = tp.topics;
+  topicHay = topics.map(([name, kws]) => " " + norm([name, ...kws].join(" | ")));
   journals = sc.j.map((r) => {
     const [name, issn, sjr, sq, h, c2, c3, oa, diamond, pub, ci, ai] = r;
     let best = null;
     for (const i of issn) { const hit = ql.j[i]; if (hit && (!best || STRATA.indexOf(hit[0]) < STRATA.indexOf(best[0]))) best = hit; }
     const catNames = ci.map((i) => sc.cats[i]), areaNames = ai.map((i) => sc.areas[i]);
+    let tl = [];
+    for (const i of issn) if (tp.j[i] && tp.j[i].length > tl.length) tl = tp.j[i];
     return {
-      name, issn, sjr, sq, h, c2, c3, open: oa === 1, diamond: diamond === 1, pub, cats: catNames, areas: areaNames,
+      name, issn, sjr, sq, h, c2, c3, open: oa === 1, diamond: diamond === 1, pub, cats: catNames, areas: areaNames, tl,
       q: best ? best[0] : "", parent: best ? (ql.areas[best[1]] || "") : "",
       hayTitle: norm(name), hayScope: norm(catNames.concat(areaNames).join(" | ")),
     };
   });
   buildVocab(sc);
   const notes = [`SCImago ${sc.meta.year}: ${journals.length.toLocaleString("pt-BR")} revistas.`];
+  if (topics.length) notes.push(`OpenAlex: ${topics.length.toLocaleString("pt-BR")} temas de pesquisa.`);
   if (ql.meta?.event) notes.push(`Qualis ${ql.meta.event}, lista consultada em ${ql.meta.consulted}.`);
   $("qmeta").textContent = notes.join(" ");
   $("catlist").innerHTML = cats.slice().sort((a, b) => a.localeCompare(b)).map((c) =>
@@ -96,8 +113,18 @@ function buildVocab(sc) {
     if (!e) count.set(k, { term: t, kind: "nome", n });
     else e.n = Math.max(e.n, n);
   }
-  // suggestion counts are journals having the category/area or the title word; the chip shows the exact match count
-  vocab = [...count.values()].sort((a, b) => b.n - a.n);
+  // topics and topic keywords: count the journals that publish in the topic (summed over topics for a keyword)
+  const perTopic = new Array(topics.length).fill(0);
+  for (const j of journals) for (const [ti] of j.tl) perTopic[ti]++;
+  const kwCount = new Map();
+  topics.forEach(([name, kws], ti) => {
+    const k = norm(name), e = count.get(k);
+    if (!e) count.set(k, { term: name, kind: "tema", n: perTopic[ti] }); else e.n = Math.max(e.n, perTopic[ti]);
+    for (const w of kws) { const kk = norm(w); kwCount.set(kk, { term: w, n: (kwCount.get(kk)?.n || 0) + perTopic[ti] }); }
+  });
+  for (const [kk, v] of kwCount) if (!count.has(kk) && v.n) count.set(kk, { term: v.term, kind: "termo", n: v.n });
+  // suggestion counts are approximate; the chip shows the exact number of journals that match
+  vocab = [...count.values()].filter((v) => v.n > 0).sort((a, b) => b.n - a.n);
 }
 function suggestions(text) {
   const t = norm(text.trim());
@@ -111,7 +138,13 @@ function suggestions(text) {
     if (at < 0 || (at > 0 && /[a-z0-9]/.test(k[at - 1]))) continue;      // match at the start of a word only
     hits.push({ ...v, prefix: at === 0 });
   }
-  return hits.sort((a, b) => b.n - a.n || b.prefix - a.prefix).slice(0, 12);
+  hits.sort((a, b) => b.n - a.n || b.prefix - a.prefix);
+  const full = ABBR[t];
+  if (full && !chosen.has(norm(full))) {
+    const v = vocab.find((x) => norm(x.term) === norm(full));
+    hits.unshift({ term: full, kind: `sigla ${text.trim().toUpperCase()}`, n: v ? v.n : 0 });
+  }
+  return hits.slice(0, 12);
 }
 let sugg = [], suggAt = -1;
 function drawSuggest() {
@@ -120,8 +153,11 @@ function drawSuggest() {
   if (!text.trim()) { box.hidden = true; return; }
   box.hidden = false;
   if (!sugg.length) {
-    box.innerHTML = `<div class="sg empty">“${esc(text)}” não aparece no nome nem nas categorias de nenhuma revista. ` +
-      "Tente outro termo, por extenso e em inglês.</div>";
+    const full = ABBR[norm(text.trim())];
+    box.innerHTML = full && keywords.map(norm).includes(norm(full))
+      ? `<div class="sg empty">${esc(text.trim().toUpperCase())} = “${esc(full)}”, que já está escolhida.</div>`
+      : `<div class="sg empty">“${esc(text)}” não aparece no nome, nas categorias nem nos temas de nenhuma revista. ` +
+        "Tente outro termo, por extenso e em inglês.</div>";
     return;
   }
   box.innerHTML = sugg.map((v, i) => `<div class="sg${i === suggAt ? " on" : ""}" role="option" data-i="${i}">` +
@@ -138,7 +174,8 @@ function addKeyword(term) {
 }
 function drawKeywords() {
   $("kwchips").innerHTML = keywords.map((k, i) => {
-    const n = journals.filter((j) => j.hayTitle.includes(norm(k)) || j.hayScope.includes(norm(k))).length;
+    const nk = norm(k), ts = topicsFor(nk);
+    const n = journals.filter((j) => matchOne(j, nk, ts) >= 0).length;
     return `<span class="kwchip${n ? "" : " zero"}">${esc(k)} <span class="mono">${n}</span>` +
       `<button type="button" aria-label="Remover ${esc(k)}" data-i="${i}">×</button></span>`;
   }).join("");
@@ -148,15 +185,33 @@ function drawKeywords() {
 }
 
 /* ---------- matching and selection ---------- */
+const topicCache = new Map();
+function topicsFor(k) {                  // topics whose name or keywords contain the term at the start of a word
+  if (!topicCache.has(k)) {
+    const set = new Set(), needle = " " + k;
+    topicHay.forEach((h, ti) => {
+      let at = h.indexOf(k);
+      while (at >= 0) { if (!/[a-z0-9]/.test(h[at - 1] || " ")) { set.add(ti); break; } at = h.indexOf(k, at + 1); }
+    });
+    topicCache.set(k, set);
+  }
+  return topicCache.get(k);
+}
+function matchOne(j, k, tset) {          // -> works in matched topics (>= 0) if the journal matches, else -1
+  let works = 0, hit = false;
+  for (const [ti, c] of j.tl) if (tset.has(ti)) { works += c; hit = true; }
+  if (hit) return works;
+  return j.hayTitle.includes(k) || j.hayScope.includes(k) ? 0 : -1;
+}
 function update() {
   keywords = keywords.slice(0, 15);
   K = keywords.length;
-  const keys = keywords.map(norm);
+  const keys = keywords.map(norm), sets = keys.map(topicsFor);
   matched = [];
   for (const j of journals) {
-    const hits = [];
-    keys.forEach((k, i) => { if (j.hayTitle.includes(k) || j.hayScope.includes(k)) hits.push(keywords[i]); });
-    if (hits.length) matched.push(Object.assign(j, { kws: hits, nkw: hits.length }));
+    const hits = []; let works = 0;
+    keys.forEach((k, i) => { const w = matchOne(j, k, sets[i]); if (w >= 0) { hits.push(keywords[i]); works += w; } });
+    if (hits.length) matched.push(Object.assign(j, { kws: hits, nkw: hits.length, works }));
   }
   syncURL(); render();
 }
@@ -164,7 +219,7 @@ function passes(j) { return shownQ.has(j.q || "none") && shownA.has(j.open ? "op
 function visible() {
   const n = Math.max(1, Math.min(500, Math.round(Number($("n").value) || 40)));
   const m = METRICS[yMetric].get;
-  return matched.filter(passes).sort((a, b) => b.nkw - a.nkw || (m(b) ?? -1) - (m(a) ?? -1)).slice(0, n);
+  return matched.filter(passes).sort((a, b) => b.nkw - a.nkw || b.works - a.works || (m(b) ?? -1) - (m(a) ?? -1)).slice(0, n);
 }
 function jitter(s) {                     // fixed small horizontal offset per journal, so points on the same x stay apart
   let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -257,6 +312,7 @@ function drawChart() {
         `<br>Cit./artigo 3 anos <span class="mono">${fmt(p.c3)}</span> · 2 anos <span class="mono">${fmt(p.c2)}</span>` +
         `<br>SJR <span class="mono">${fmt(p.sjr, 3)}</span> · h <span class="mono">${p.h ?? "—"}</span>` +
         `<br>Combina com ${p.nkw} de ${K}: ${p.kws.map(esc).join(", ")}` +
+        (p.works ? `<br>Artigos nos temas dessas palavras: <span class="mono">${p.works.toLocaleString("pt-BR")}</span>` : "") +
         `<br><span class="muted">${esc(p.cats.join("; "))}</span>` +
         `<br>${esc(p.pub)} · ${p.open ? (p.diamond ? "acesso aberto sem taxa" : "acesso aberto") : "híbrida ou assinatura"}`;
       const r = host.getBoundingClientRect(), sx = r.width / W;
@@ -289,6 +345,7 @@ function drawTable() {
     return `<tr><td><a href="${scimagoLink(r)}" target="_blank" rel="noopener">${esc(r.name)}</a></td><td>${badge}</td>
       <td>${esc(r.sq) || "—"}</td><td class="num">${fmt(r.c3)}</td><td class="num">${fmt(r.c2)}</td><td class="num">${fmt(r.sjr, 3)}</td>
       <td class="num">${r.h ?? "—"}</td><td class="num">${r.nkw}/${K}</td><td>${r.kws.map(esc).join(", ")}</td>
+      <td class="num">${r.works ? r.works.toLocaleString("pt-BR") : "—"}</td>
       <td class="small">${esc(r.cats.join("; "))}</td><td>${esc((r.parent || "—").toLowerCase())}</td><td>${esc(r.pub) || "—"}</td>
       <td>${r.open ? (r.diamond ? "aberta, sem taxa" : "aberta") : "híbrida/assinatura"}</td></tr>`;
   }).join("");
@@ -333,7 +390,7 @@ function syncURL() {
 }
 function readURL() {
   const p = new URLSearchParams(location.search);
-  keywords = (p.get("q") || "optics,photonics,biomedical engineering,dermatology,radiology,spectroscopy")
+  keywords = (p.get("q") || "spatial frequency domain imaging,monte carlo,tissue optical properties,skin pigmentation,photodynamic therapy,photobiomodulation")
     .split(",").map((s) => s.trim()).filter(Boolean);
   if (p.get("n")) $("n").value = p.get("n");
   if (p.get("qualis")) shownQ = new Set(p.get("qualis").split(",").filter((q) => STRATA.includes(q) || q === "none"));
@@ -368,7 +425,7 @@ function readURL() {
   $("ylin").addEventListener("click", () => { yLog = false; store.set("mr.ylog", false); render(); });
   document.querySelectorAll("th[data-k]").forEach((th) => th.addEventListener("click", () => {
     const k = th.dataset.k;
-    sortDir = sortKey === k ? -sortDir : (["c3", "c2", "sjr", "h", "q", "sq", "nkw"].includes(k) ? -1 : 1);
+    sortDir = sortKey === k ? -sortDir : (["c3", "c2", "sjr", "h", "q", "sq", "nkw", "works"].includes(k) ? -1 : 1);
     sortKey = k; drawTable();
   }));
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 120); });

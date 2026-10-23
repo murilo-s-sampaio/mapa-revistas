@@ -125,7 +125,7 @@ footer a { color: var(--muted); }
         <div class="kwbox">
           <div class="kwchips" id="kwchips"></div>
           <input id="kwInput" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list"
-            aria-controls="suggest" placeholder="ex.: optic, dermat, biomedical…">
+            aria-controls="suggest" placeholder="ex.: monte carlo, SFDI, skin, photodynamic…">
         </div>
         <div class="suggest" id="suggest" role="listbox" hidden></div>
       </div>
@@ -157,8 +157,10 @@ footer a { color: var(--muted); }
     </div>
     <div class="chart" id="chart"><div class="tip" id="tip" hidden></div></div>
     <p class="status" id="missing"></p>
-    <p class="note">Uma palavra-chave combina com a revista quando aparece no nome dela ou nas suas categorias e áreas do
-      Scopus. As sugestões da busca mostram só termos que existem nessas tabelas, com o número de revistas; o número no
+    <p class="note">Uma palavra-chave combina com a revista quando aparece no nome dela, nas suas categorias e áreas do
+      Scopus ou num tema de pesquisa da OpenAlex em que a revista publica (cada tema tem um nome e uma lista de termos, como
+      “spatial frequency domain imaging” ou “monte carlo simulation”). No empate, vêm antes as revistas com mais artigos
+      nesses temas. As sugestões da busca mostram só termos que existem nessas tabelas, com o número de revistas; o número no
       chip de cada palavra-chave é o total exato de revistas que combinam. Pontos com o mesmo número ficam levemente espalhados para não se sobreporem. Entram no gráfico as revistas que
       combinam com mais palavras-chave e, no empate, as de maior impacto, até o número escolhido. Passe o mouse sobre um
       ponto para ver os detalhes ou clique para abrir a revista no SCImago.</p>
@@ -173,7 +175,7 @@ footer a { color: var(--muted); }
         <thead><tr>
           <th data-k="name">Revista</th><th data-k="q">Qualis</th><th data-k="sq">Quartil</th>
           <th data-k="c3">Cit./artigo 3 anos</th><th data-k="c2">Cit./doc 2 anos</th><th data-k="sjr">SJR</th><th data-k="h">Índice h</th>
-          <th data-k="nkw">Combina</th><th>Palavras-chave</th><th>Categorias (Scopus)</th><th data-k="parent">Área mãe (Qualis)</th>
+          <th data-k="nkw">Combina</th><th>Palavras-chave</th><th data-k="works">Artigos nos temas</th><th>Categorias (Scopus)</th><th data-k="parent">Área mãe (Qualis)</th>
           <th data-k="pub">Editora</th><th data-k="open">Acesso</th>
         </tr></thead>
         <tbody id="rows"></tbody>
@@ -185,12 +187,13 @@ footer a { color: var(--muted); }
     Fontes: revistas, citações, SJR, quartil, categorias e acesso aberto do
     <a href="https://www.scimagojr.com" target="_blank" rel="noopener">SCImago Journal &amp; Country Rank</a> (base Scopus);
     classificação Qualis da <a href="https://sucupira.capes.gov.br" target="_blank" rel="noopener">Plataforma Sucupira (CAPES)</a>,
-    ligada pelo ISSN. Tudo vem de tabelas baixadas, sem consulta externa. Citações por artigo em 3 anos: citações recebidas
+    ligada pelo ISSN; temas de pesquisa e artigos por tema de cada revista da <a href="https://openalex.org" target="_blank"
+    rel="noopener">OpenAlex</a> (arquivo baixado, sem consulta ao vivo). Tudo vem de tabelas baixadas, sem consulta externa. Citações por artigo em 3 anos: citações recebidas
     no ano pelos artigos e revisões dos três anos anteriores, divididas pelo número desses documentos. Híbrida ou assinatura:
     revista que não é inteiramente de acesso aberto (a maioria aceita acesso aberto pago por artigo).
     <span id="qmeta"></span>
   </footer>
 </div>
-<script src="app.js?v=2026-10-23e"></script>
+<script src="app.js?v=2026-10-23f"></script>
 </body>
 </html>

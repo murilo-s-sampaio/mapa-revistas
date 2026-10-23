@@ -11,11 +11,16 @@ Página: https://murilo-s-sampaio.github.io/mapa-revistas/
 - `data/scimago.json`: todas as revistas do [SCImago Journal & Country Rank](https://www.scimagojr.com) (base Scopus):
   nome, ISSN, SJR, quartil, índice h, citações por documento em 2 anos, citações por artigo em 3 anos, acesso aberto,
   editora, categorias e áreas.
+- `data/topics.json`: os ~4.500 temas de pesquisa da [OpenAlex](https://openalex.org), cada um com sua lista de termos
+  (por exemplo, o tema *Optical Imaging and Spectroscopy Techniques* tem "spatial frequency domain imaging", "monte carlo
+  simulation", "tissue optical properties"…), e os temas em que cada revista publica, com o número de artigos. Vem do
+  snapshot público da OpenAlex (download único, sem API).
 - `data/qualis.json`: classificação Qualis do quadriênio 2021–2024, da consulta pública da
   [Plataforma Sucupira](https://sucupira.capes.gov.br), uma entrada por ISSN.
 
-Uma palavra-chave combina com a revista quando aparece no nome dela ou nas suas categorias e áreas do Scopus (sem
-diferenciar maiúsculas e acentos). A lista de categorias aparece na página para clicar e acrescentar.
+Uma palavra-chave combina com a revista quando aparece no nome dela, nas suas categorias e áreas do Scopus ou num tema da
+OpenAlex em que ela publica (sem diferenciar maiúsculas e acentos). A busca só sugere termos que existem nessas tabelas,
+e siglas comuns (SFDI, DOT, OCT, PDT, PBM…) são traduzidas para o termo por extenso.
 
 O fator de impacto do JCR (Clarivate) não é aberto. A métrica padrão, citações por artigo em 3 anos (citações recebidas no
 ano pelos artigos e revisões dos três anos anteriores, por documento), é a mais próxima dele, mas não coincide com o JCR.
@@ -26,7 +31,9 @@ Scripts em `tools/` (rodam em Python com Playwright e o Chrome instalado):
 
 1. `scrape_qualis.py`: baixa a classificação Qualis do Sucupira, estrato por estrato.
 2. `build_qualis_json.py`: gera `data/qualis.json` a partir do download.
-3. Exporte a tabela do SCImago (journalrank.php?out=xls) e rode `build_scimago_json.py scimago.csv data/scimago.json`.
+3. `get_openalex_topics.py` e `build_topics_json.py`: baixam o snapshot da OpenAlex (temas e revistas) e geram
+   `data/topics.json`.
+4. Exporte a tabela do SCImago (journalrank.php?out=xls) e rode `build_scimago_json.py scimago.csv data/scimago.json`.
 
 Depois de trocar os arquivos de dados, aumente `DATA_VERSION` em `app.js` e o `?v=` em `index.html` para os navegadores
 buscarem a versão nova.
