@@ -5,7 +5,7 @@
 const OA = "https://api.openalex.org";
 const STRATA = ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C"];
 const GROUPS_PER_KEYWORD = 200;          // journals read per keyword (OpenAlex's largest group page)
-const DATA_VERSION = "2026-10-23b";      // bump when data/*.json change, so browsers fetch the new files
+const DATA_VERSION = "2026-10-23c";      // bump when data/*.json change, so browsers fetch the new files
 const METRICS = {
   c3: { label: "Citações por artigo, 3 anos (Scopus)", get: (j) => j.c3 },
   c2: { label: "Citações por documento, 2 anos (Scopus)", get: (j) => j.c2 },
@@ -74,10 +74,12 @@ function annotate() {
 }
 
 /* ---------- OpenAlex ---------- */
+function apiKey() { return ($("apikey").value || "").trim(); }
 async function getJSON(url, signal) {
-  const r = await fetch(url, { signal });
-  if (r.status === 429) throw Object.assign(new Error("limite"), { code: "rate" });
-  if (!r.ok) throw Object.assign(new Error(String(r.status)), { code: "http" });
+  const key = apiKey();
+  const r = await fetch(key ? `${url}&api_key=${encodeURIComponent(key)}` : url, { signal });
+  if ([402, 403, 429].includes(r.status)) throw Object.assign(new Error(String(r.status)), { code: "rate", status: r.status });
+  if (!r.ok) throw Object.assign(new Error(String(r.status)), { code: "http", status: r.status });
   return r.json();
 }
 async function journalsFor(keyword, since, signal) {
@@ -155,8 +157,10 @@ async function search(ev) {
     setStatus(`${journals.length} revistas publicaram sobre pelo menos uma das ${kws.length} palavras-chave desde ${since}.`);
   } catch (e) {
     if (e.name === "AbortError") return;
-    setStatus(e.code === "rate" ? "A OpenAlex limitou as consultas por agora. Tente de novo em alguns minutos."
-      : "Não foi possível consultar a OpenAlex. Verifique a conexão e tente de novo.", true);
+    setStatus(e.code === "rate"
+      ? (apiKey() ? "A cota diária da sua chave da OpenAlex acabou. Ela renova à meia-noite (UTC)."
+        : "A cota gratuita da OpenAlex sem chave acabou (ela é dividida por todos na sua rede). Cole uma chave gratuita da OpenAlex no campo \"Chave da API\".")
+      : `Não foi possível consultar a OpenAlex${e.status ? ` (erro ${e.status})` : ""}. Verifique a conexão e tente de novo.`, true);
   } finally { $("go").disabled = false; }
 }
 
@@ -357,6 +361,8 @@ function readURL() {
   $("since").value = String(yr - 6);
   $("metric").innerHTML = Object.entries(METRICS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
   readURL(); drawChips(); drawAccess();
+  $("apikey").value = store.get("mr.key", "");
+  $("apikey").addEventListener("change", () => store.set("mr.key", apiKey()));
   $("f").addEventListener("submit", search);
   $("n").addEventListener("change", () => { syncURL(); render(); });
   $("metric").addEventListener("change", () => { yMetric = $("metric").value; store.set("mr.y", yMetric); syncURL(); render(); });

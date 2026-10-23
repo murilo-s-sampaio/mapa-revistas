@@ -38,6 +38,7 @@ header p { margin: 4px 0 0; color: var(--ink-2); max-width: 72ch; }
 .panel { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 16px; min-width: 0; }
 form { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; }
 .field { display: grid; gap: 4px; min-width: 0; }
+.field.ctx { grid-column: 1 / -1; }
 label, .lab { font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
 input, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--axis); border-radius: 7px; padding: 9px 11px; min-width: 0; }
 input[type="number"] { width: 6em; font-family: var(--f-num); }
@@ -116,6 +117,11 @@ footer a { color: var(--muted); }
         <span class="lab">Acesso</span>
         <div class="qchips" id="achips"></div>
       </div>
+      <div class="field ctx">
+        <label for="apikey">Chave da API OpenAlex (opcional, gratuita; fica só neste navegador)</label>
+        <input id="apikey" type="password" autocomplete="off" spellcheck="false"
+          placeholder="Sem chave, a cota é dividida por todos na sua rede. Crie a sua em openalex.org/settings/api">
+      </div>
       <div class="row">
         <button class="primary" id="go" type="submit">Buscar revistas</button>
         <span class="status" id="status" role="status"></span>
@@ -171,6 +177,6 @@ footer a { color: var(--muted); }
     <span id="qmeta"></span>
   </footer>
 </div>
-<script src="app.js?v=2026-10-23b"></script>
+<script src="app.js?v=2026-10-23c"></script>
 </body>
 </html>

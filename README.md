@@ -15,6 +15,13 @@ eixo vertical é o impacto e a cor é o estrato Qualis, que pode ser filtrado (A
 - **Qualis:** `data/qualis.json`, gerado a partir da consulta pública de classificações de periódicos da Plataforma
   Sucupira (quadriênio 2021–2024), uma entrada por ISSN. A revista da OpenAlex é ligada ao Qualis pelo ISSN.
 
+## Cota da OpenAlex
+
+Desde 2026 a OpenAlex mede o uso: sem chave, cada rede (endereço IP) divide uma cota gratuita diária com todos os seus
+usuários, o que numa universidade acaba rápido. Crie uma chave gratuita em <https://openalex.org/settings/api> e cole no
+campo "Chave da API" da página: ela fica só no seu navegador (não vai para o repositório) e dá uma cota própria de
+cerca de mil buscas de palavra-chave por dia.
+
 ## Publicar no GitHub Pages
 
 1. Crie um repositório (por exemplo `mapa-revistas`) e envie `index.html`, `app.js`, `data/qualis.json` e este README.
