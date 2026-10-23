@@ -88,8 +88,8 @@ footer a { color: var(--muted); }
 <div class="wrap">
   <header>
     <h1>Mapa de Revistas</h1>
-    <p>Escreva palavras-chave. Para cada uma, a página encontra as revistas que mais publicaram sobre o tema, com o impacto
-      em dois anos e a classificação Qualis CAPES. Cada palavra-chave vira uma coluna do gráfico.</p>
+    <p>Escreva palavras-chave. A página encontra as revistas que publicaram sobre elas, com o impacto em dois anos e a
+      classificação Qualis CAPES. Cada revista é um ponto: quanto mais à direita, em mais palavras-chave ela publica.</p>
   </header>
 
   <section class="panel">
@@ -97,11 +97,11 @@ footer a { color: var(--muted); }
       <div class="field kw">
         <label for="kw">Palavras-chave (separe por vírgula)</label>
         <input id="kw" type="text" autocomplete="off"
-          value="spatial frequency domain imaging, Monte Carlo skin, skin pigmentation, photodynamic therapy dosimetry">
+          value="spatial frequency domain imaging, tissue optical properties, Monte Carlo simulation, skin pigmentation, photodynamic therapy, photobiomodulation">
       </div>
       <div class="field">
-        <label for="n">Revistas por palavra</label>
-        <input id="n" type="number" min="1" max="40" step="1" value="10">
+        <label for="n">Número de revistas</label>
+        <input id="n" type="number" min="1" max="300" step="1" value="30">
       </div>
       <div class="field">
         <label for="since">Artigos desde</label>
@@ -127,8 +127,10 @@ footer a { color: var(--muted); }
       </div>
     </div>
     <div class="chart" id="chart"><div class="tip" id="tip" hidden></div></div>
-    <p class="note">Dentro de cada coluna, quanto mais à direita, mais artigos a revista publicou sobre aquela palavra-chave.
-      A cor é o estrato Qualis. Passe o mouse sobre um ponto para ver os detalhes.</p>
+    <p class="note">Eixo horizontal: em quantas das suas palavras-chave a revista tem pelo menos um artigo (frase no título
+      ou no resumo, desde o ano escolhido). Dentro de cada faixa, quanto mais à direita, mais artigos no total sobre os
+      temas. Entram no gráfico as revistas que cobrem mais palavras-chave, até o número escolhido. A cor é o estrato
+      Qualis; passe o mouse sobre um ponto para ver os detalhes ou clique para abrir a revista.</p>
   </section>
 
   <section class="panel">
@@ -137,7 +139,7 @@ footer a { color: var(--muted); }
       <table>
         <thead><tr>
           <th data-k="name">Revista</th><th data-k="q">Qualis</th><th data-k="if2">Impacto 2 anos</th><th data-k="h">Índice h</th>
-          <th data-k="total">Artigos sobre os temas</th><th data-k="parent">Área mãe (Qualis)</th><th data-k="pub">Editora</th><th data-k="oa">Acesso</th>
+          <th data-k="nkw">Palavras-chave</th><th data-k="total">Artigos por palavra-chave</th><th data-k="parent">Área mãe (Qualis)</th><th data-k="pub">Editora</th><th data-k="oa">Acesso</th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>

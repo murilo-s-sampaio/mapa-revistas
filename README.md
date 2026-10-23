@@ -1,14 +1,15 @@
 # Mapa de Revistas
 
-Página estática: você escreve palavras-chave e vê, para cada uma, as revistas que mais publicaram sobre o tema, com o
-impacto em dois anos e a classificação Qualis CAPES. Cada palavra-chave é uma coluna do gráfico; o eixo vertical é o
-impacto; a cor é o estrato Qualis, que pode ser filtrado (A1, A2, A3…).
+Página estática: você escreve palavras-chave e vê as revistas que publicaram sobre elas, com o impacto em dois anos e a
+classificação Qualis CAPES. Cada revista é um ponto: o eixo horizontal é em quantas das palavras-chave ela publica, o
+eixo vertical é o impacto e a cor é o estrato Qualis, que pode ser filtrado (A1, A2, A3…).
 
 ## Como funciona
 
 - **Revistas por palavra-chave:** consulta ao vivo da [OpenAlex](https://openalex.org) (gratuita, sem chave), pela frase
-  exata no título ou no resumo dos artigos, desde o ano escolhido. A posição dentro da coluna é o número de artigos da
-  revista sobre o tema.
+  exata no título ou no resumo dos artigos, desde o ano escolhido. Uma revista "publica sobre" uma palavra-chave quando
+  tem pelo menos um artigo com a frase; dentro de cada faixa do eixo horizontal, a posição é o total de artigos sobre os
+  temas.
 - **Impacto em dois anos:** `2yr_mean_citedness` da OpenAlex, a média de citações dos artigos publicados nos dois anos
   anteriores (a mesma ideia do fator de impacto do JCR, em outra base; costuma dar valores um pouco maiores).
 - **Qualis:** `data/qualis.json`, gerado a partir da consulta pública de classificações de periódicos da Plataforma
