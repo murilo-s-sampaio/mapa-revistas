@@ -6,11 +6,12 @@
 "use strict";
 
 const STRATA = ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C"];
-const DATA_VERSION = "2026-10-23f";      // bump when data/*.json change, so browsers fetch the new files
+const DATA_VERSION = "2026-10-23g";      // bump when data/*.json change, so browsers fetch the new files
 const METRICS = {
   c3: { label: "Citações por artigo, 3 anos (Scopus)", get: (j) => j.c3, d: 2 },
   c2: { label: "Citações por documento, 2 anos (Scopus)", get: (j) => j.c2, d: 2 },
   sjr: { label: "SJR (SCImago)", get: (j) => j.sjr, d: 3 },
+  jcr: { label: "Fator de impacto JCR (planilha carregada)", get: (j) => j.jcr, d: 2 },
 };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -28,6 +29,7 @@ let shownA = new Set(store.get("mr.a2", ["open", "hybrid"]));
 let yLog = store.get("mr.ylog", true);
 let yMetric = METRICS[store.get("mr.y", "c3")] ? store.get("mr.y", "c3") : "c3";
 let sortKey = "nkw", sortDir = -1;
+let jcr = store.get("mr.jcr", { j: {}, files: [] });   // the viewer's own JCR export: {j: {ISSN: [jif, quartile, year]}, files}
 let matched = [], K = 0, keywords = [];
 let vocab = [];                          // indexed terms: [{term, kind, n}] from categories, areas, titles and topics
 let topics = [], topicHay = [];          // OpenAlex topics [[name, [keywords]]] and their normalized search text
@@ -77,6 +79,7 @@ async function loadData() {
     };
   });
   buildVocab(sc);
+  attachJCR();
   const notes = [`SCImago ${sc.meta.year}: ${journals.length.toLocaleString("pt-BR")} revistas.`];
   if (topics.length) notes.push(`OpenAlex: ${topics.length.toLocaleString("pt-BR")} temas de pesquisa.`);
   if (ql.meta?.event) notes.push(`Qualis ${ql.meta.event}, lista consultada em ${ql.meta.consulted}.`);
@@ -215,6 +218,76 @@ function update() {
   }
   syncURL(); render();
 }
+function attachJCR() {
+  for (const j of journals) {
+    let hit = null;
+    for (const i of j.issn) if (jcr.j[i]) { hit = jcr.j[i]; break; }
+    j.jcr = hit ? hit[0] : null; j.jq = hit ? hit[1] : ""; j.jy = hit ? hit[2] : "";
+  }
+  const n = Object.keys(jcr.j).length;
+  $("jcrstatus").textContent = n ? `${n.toLocaleString("pt-BR")} revistas do JCR carregadas (${jcr.files.join(", ")}), guardadas só neste navegador.`
+    : "Nenhuma planilha do JCR carregada.";
+  $("jcrclear").hidden = !n;
+  $("metric").querySelector('option[value="jcr"]').disabled = !n;
+  if (!n && yMetric === "jcr") yMetric = "c3";
+}
+
+/* ---------- JCR sheet (exported by the viewer from Journal Citation Reports) ---------- */
+function parseCSV(text) {
+  const delim = (text.split("\n").find((l) => /issn/i.test(l)) || "").split(";").length > 2 ? ";" : ",";
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+async function readSheet(file) {
+  if (/\.xlsx?$/i.test(file.name)) {
+    if (!window.XLSX) await new Promise((ok, bad) => {
+      const sc = document.createElement("script");
+      sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; sc.onload = ok; sc.onerror = bad;
+      document.head.appendChild(sc);
+    });
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+  }
+  return parseCSV(await file.text());
+}
+function issnOf(v) {
+  const m = String(v || "").toUpperCase().match(/(\d{4})-?(\d{3}[\dX])/);
+  return m ? `${m[1]}-${m[2]}` : null;
+}
+async function loadJCR(files) {
+  let added = 0;
+  for (const f of files) {
+    const rows = await readSheet(f);
+    const hi = rows.findIndex((r) => r.some((c) => /issn/i.test(String(c))) && r.some((c) => /jif|impact factor/i.test(String(c))));
+    if (hi < 0) { $("jcrstatus").textContent = `${f.name}: não achei as colunas de ISSN e de fator de impacto (JIF).`; continue; }
+    const head = rows[hi].map((c) => String(c).trim());
+    const col = (re, not) => head.findIndex((h) => re.test(h) && !(not && not.test(h)));
+    const cI = col(/^issn$|print issn|^issn \(print\)/i), cE = col(/eissn|e-issn|electronic/i);
+    const cJ = col(/(^|\s)jif$|journal impact factor$|^\d{4} jif|impact factor$/i, /quartile|rank|percentile|5[- ]year|without/i);
+    const cQ = col(/jif quartile|quartile/i);
+    const year = (head[cJ].match(/(\d{4})/) || [])[1] || "";
+    for (const r of rows.slice(hi + 1)) {
+      const jif = parseFloat(String(r[cJ] ?? "").replace(",", "."));
+      if (!isFinite(jif)) continue;
+      for (const v of [r[cI], r[cE]]) { const i = issnOf(v); if (i) { jcr.j[i] = [jif, String(r[cQ] ?? "").trim(), year]; added++; } }
+    }
+    if (!jcr.files.includes(f.name)) jcr.files.push(f.name);
+  }
+  store.set("mr.jcr", jcr);
+  attachJCR();
+  if (added) { yMetric = "jcr"; store.set("mr.y", yMetric); }
+  update();
+}
+
 function passes(j) { return shownQ.has(j.q || "none") && shownA.has(j.open ? "open" : "hybrid"); }
 function visible() {
   const n = Math.max(1, Math.min(500, Math.round(Number($("n").value) || 40)));
@@ -311,6 +384,7 @@ function drawChart() {
         `${p.sq ? ` · quartil ${esc(p.sq)}` : ""}` +
         `<br>Cit./artigo 3 anos <span class="mono">${fmt(p.c3)}</span> · 2 anos <span class="mono">${fmt(p.c2)}</span>` +
         `<br>SJR <span class="mono">${fmt(p.sjr, 3)}</span> · h <span class="mono">${p.h ?? "—"}</span>` +
+        (p.jcr != null ? `<br>JCR ${esc(p.jy)} <span class="mono">${fmt(p.jcr)}</span>${p.jq ? ` (${esc(p.jq)})` : ""}` : "") +
         `<br>Combina com ${p.nkw} de ${K}: ${p.kws.map(esc).join(", ")}` +
         (p.works ? `<br>Artigos nos temas dessas palavras: <span class="mono">${p.works.toLocaleString("pt-BR")}</span>` : "") +
         `<br><span class="muted">${esc(p.cats.join("; "))}</span>` +
@@ -343,6 +417,7 @@ function drawTable() {
     const col = qColor(r.q);
     const badge = r.q ? `<span class="qbadge" style="background:${col};color:${["A1", "A2"].includes(r.q) ? "var(--surface)" : "var(--ink)"}">${r.q}</span>` : "—";
     return `<tr><td><a href="${scimagoLink(r)}" target="_blank" rel="noopener">${esc(r.name)}</a></td><td>${badge}</td>
+      <td class="num">${r.jcr != null ? fmt(r.jcr) : "—"}${r.jq ? ` <span class="muted">${esc(r.jq)}</span>` : ""}</td>
       <td>${esc(r.sq) || "—"}</td><td class="num">${fmt(r.c3)}</td><td class="num">${fmt(r.c2)}</td><td class="num">${fmt(r.sjr, 3)}</td>
       <td class="num">${r.h ?? "—"}</td><td class="num">${r.nkw}/${K}</td><td>${r.kws.map(esc).join(", ")}</td>
       <td class="num">${r.works ? r.works.toLocaleString("pt-BR") : "—"}</td>
@@ -425,10 +500,17 @@ function readURL() {
   $("ylin").addEventListener("click", () => { yLog = false; store.set("mr.ylog", false); render(); });
   document.querySelectorAll("th[data-k]").forEach((th) => th.addEventListener("click", () => {
     const k = th.dataset.k;
-    sortDir = sortKey === k ? -sortDir : (["c3", "c2", "sjr", "h", "q", "sq", "nkw", "works"].includes(k) ? -1 : 1);
+    sortDir = sortKey === k ? -sortDir : (["jcr", "c3", "c2", "sjr", "h", "q", "sq", "nkw", "works"].includes(k) ? -1 : 1);
     sortKey = k; drawTable();
   }));
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 120); });
+  $("jcrfile").addEventListener("change", async (e) => {
+    const fs = [...e.target.files]; if (!fs.length) return;
+    $("jcrstatus").textContent = "Lendo a planilha…";
+    try { await loadJCR(fs); } catch { $("jcrstatus").textContent = "Não consegui ler a planilha. Exporte do JCR em CSV ou XLSX."; }
+    e.target.value = "";
+  });
+  $("jcrclear").addEventListener("click", () => { jcr = { j: {}, files: [] }; store.set("mr.jcr", jcr); attachJCR(); update(); });
   $("status").textContent = "Carregando as tabelas…";
   try { await loadData(); $("status").textContent = ""; }
   catch { $("status").textContent = "Não foi possível carregar data/scimago.json."; $("status").classList.add("error"); return; }

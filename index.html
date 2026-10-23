@@ -73,6 +73,11 @@ button { font: inherit; font-weight: 500; border-radius: 7px; padding: 9px 16px;
 .sg .kind { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .sg .n { text-align: right; color: var(--ink-2); font-size: .82rem; }
 .sg.empty { display: block; color: var(--ink-2); cursor: default; font-size: .88rem; }
+.filebtn { display: inline-block; padding: 6px 12px; border-radius: 7px; border: 1px solid var(--accent); color: var(--accent);
+  font-size: .86rem; font-weight: 500; cursor: pointer; text-transform: none; letter-spacing: 0; }
+.filebtn:hover { background: var(--bg); }
+details p { max-width: 80ch; margin: 6px 0 0; }
+details a { color: var(--accent); }
 .status { color: var(--ink-2); font-size: .9rem; font-variant-numeric: tabular-nums; margin: 0; }
 .status.error { color: #d03b3b; }
 details { grid-column: 1 / -1; font-size: .88rem; color: var(--ink-2); }
@@ -135,6 +140,21 @@ footer a { color: var(--muted); }
       </div>
       <div class="row"><span class="lab">Qualis</span><div class="qchips" id="qchips"></div></div>
       <div class="row"><span class="lab">Acesso</span><div class="qchips" id="achips"></div></div>
+      <div class="row jcr">
+        <span class="lab">JCR</span>
+        <label class="filebtn" for="jcrfile">Carregar planilha do JCR</label>
+        <input id="jcrfile" type="file" accept=".csv,.txt,.xlsx,.xls" multiple hidden>
+        <button type="button" class="qchip action" id="jcrclear" hidden>remover</button>
+        <span class="status" id="jcrstatus"></span>
+      </div>
+      <details>
+        <summary>Como exportar do JCR</summary>
+        <p>Entre no <a href="https://jcr.clarivate.com" target="_blank" rel="noopener">Journal Citation Reports</a> pela rede da
+          universidade (ou pelo Portal de Periódicos da CAPES), abra uma categoria (por exemplo <i>Optics</i>,
+          <i>Dermatology</i>, <i>Radiology, Nuclear Medicine &amp; Medical Imaging</i>, <i>Engineering, Biomedical</i>) e
+          use <b>Export → CSV</b> ou XLS. Pode carregar várias planilhas; a página junta todas pelo ISSN. Os números ficam só
+          neste navegador: a licença da Clarivate não permite publicá-los no repositório.</p>
+      </details>
       <details>
         <summary>Categorias do Scopus (clique numa para acrescentar às palavras-chave)</summary>
         <div class="catlist" id="catlist"></div>
@@ -173,7 +193,7 @@ footer a { color: var(--muted); }
     <div class="tbl">
       <table>
         <thead><tr>
-          <th data-k="name">Revista</th><th data-k="q">Qualis</th><th data-k="sq">Quartil</th>
+          <th data-k="name">Revista</th><th data-k="q">Qualis</th><th data-k="jcr">JCR</th><th data-k="sq">Quartil</th>
           <th data-k="c3">Cit./artigo 3 anos</th><th data-k="c2">Cit./doc 2 anos</th><th data-k="sjr">SJR</th><th data-k="h">Índice h</th>
           <th data-k="nkw">Combina</th><th>Palavras-chave</th><th data-k="works">Artigos nos temas</th><th>Categorias (Scopus)</th><th data-k="parent">Área mãe (Qualis)</th>
           <th data-k="pub">Editora</th><th data-k="open">Acesso</th>
@@ -194,6 +214,6 @@ footer a { color: var(--muted); }
     <span id="qmeta"></span>
   </footer>
 </div>
-<script src="app.js?v=2026-10-23f"></script>
+<script src="app.js?v=2026-10-23g"></script>
 </body>
 </html>
