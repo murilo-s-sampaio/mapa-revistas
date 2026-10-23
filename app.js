@@ -6,7 +6,7 @@
 "use strict";
 
 const STRATA = ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C"];
-const DATA_VERSION = "2026-10-23g";      // bump when data/*.json change, so browsers fetch the new files
+const DATA_VERSION = "2026-10-23h";      // bump when data/*.json change, so browsers fetch the new files
 const METRICS = {
   c3: { label: "Citações por artigo, 3 anos (Scopus)", get: (j) => j.c3, d: 2 },
   c2: { label: "Citações por documento, 2 anos (Scopus)", get: (j) => j.c2, d: 2 },
@@ -510,6 +510,7 @@ function readURL() {
     try { await loadJCR(fs); } catch { $("jcrstatus").textContent = "Não consegui ler a planilha. Exporte do JCR em CSV ou XLSX."; }
     e.target.value = "";
   });
+  $("kwclear").addEventListener("click", () => { keywords = []; drawKeywords(); update(); $("kwInput").focus(); });
   $("jcrclear").addEventListener("click", () => { jcr = { j: {}, files: [] }; store.set("mr.jcr", jcr); attachJCR(); update(); });
   $("status").textContent = "Carregando as tabelas…";
   try { await loadData(); $("status").textContent = ""; }

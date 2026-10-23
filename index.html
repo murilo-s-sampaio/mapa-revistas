@@ -55,6 +55,9 @@ button { font: inherit; font-weight: 500; border-radius: 7px; padding: 9px 16px;
 .kwbox:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .kwbox input { border: 0; background: transparent; padding: 4px; flex: 1 1 12em; min-width: 8em; outline: none; }
 .kwchips { display: contents; }
+.kwclear { margin-left: auto; padding: 4px 10px; font-size: .82rem; border-radius: 6px; border: 1px solid var(--axis);
+  background: var(--surface); color: var(--ink-2); }
+.kwclear:hover { border-color: var(--ink-2); color: var(--ink); }
 .kwchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 999px; font-size: .86rem;
   background: var(--surface); border: 1px solid var(--axis); }
 .kwchip .mono { color: var(--muted); font-size: .78rem; }
@@ -125,6 +128,7 @@ footer a { color: var(--muted); }
           <div class="kwchips" id="kwchips"></div>
           <input id="kwInput" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list"
             aria-controls="suggest" placeholder="ex.: monte carlo, SFDI, skin, photodynamic…">
+          <button type="button" class="kwclear" id="kwclear" title="Remover todas as palavras-chave">Limpar</button>
         </div>
         <div class="suggest" id="suggest" role="listbox" hidden></div>
       </div>
@@ -208,6 +212,6 @@ footer a { color: var(--muted); }
     <span id="qmeta"></span>
   </footer>
 </div>
-<script src="app.js?v=2026-10-23g"></script>
+<script src="app.js?v=2026-10-23h"></script>
 </body>
 </html>
