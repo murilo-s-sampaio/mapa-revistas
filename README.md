@@ -1,37 +1,36 @@
 # Mapa de Revistas
 
-Página estática: você escreve palavras-chave e vê as revistas que publicaram sobre elas, com o impacto em dois anos e a
-classificação Qualis CAPES. Cada revista é um ponto: o eixo horizontal é em quantas das palavras-chave ela publica, o
-eixo vertical é o impacto e a cor é o estrato Qualis, que pode ser filtrado (A1, A2, A3…).
+Página estática para escolher revistas: você escreve palavras-chave de escopo e cada revista que combina com pelo menos
+uma vira um ponto. O eixo horizontal é o número de palavras-chave que combinam com a revista (1, 2, 3…), o vertical é o
+impacto e a cor é o estrato Qualis CAPES. Dá para filtrar por estrato (A1, A2, A3…) e por acesso aberto ou híbrida.
 
-## Como funciona
+Página: https://murilo-s-sampaio.github.io/mapa-revistas/
 
-- **Revistas por palavra-chave:** consulta ao vivo da [OpenAlex](https://openalex.org) (gratuita, sem chave), pela frase
-  exata no título ou no resumo dos artigos, desde o ano escolhido. Uma revista "publica sobre" uma palavra-chave quando
-  tem pelo menos um artigo com a frase; dentro de cada faixa do eixo horizontal, a posição é o total de artigos sobre os
-  temas.
-- **Impacto em dois anos:** `2yr_mean_citedness` da OpenAlex, a média de citações dos artigos publicados nos dois anos
-  anteriores (a mesma ideia do fator de impacto do JCR, em outra base; costuma dar valores um pouco maiores).
-- **Qualis:** `data/qualis.json`, gerado a partir da consulta pública de classificações de periódicos da Plataforma
-  Sucupira (quadriênio 2021–2024), uma entrada por ISSN. A revista da OpenAlex é ligada ao Qualis pelo ISSN.
+## Dados (tudo baixado, sem consulta externa)
 
-## Cota da OpenAlex
+- `data/scimago.json`: todas as revistas do [SCImago Journal & Country Rank](https://www.scimagojr.com) (base Scopus):
+  nome, ISSN, SJR, quartil, índice h, citações por documento em 2 anos, citações por artigo em 3 anos, acesso aberto,
+  editora, categorias e áreas.
+- `data/qualis.json`: classificação Qualis do quadriênio 2021–2024, da consulta pública da
+  [Plataforma Sucupira](https://sucupira.capes.gov.br), uma entrada por ISSN.
 
-Desde 2026 a OpenAlex mede o uso: sem chave, cada rede (endereço IP) divide uma cota gratuita diária com todos os seus
-usuários, o que numa universidade acaba rápido. Crie uma chave gratuita em <https://openalex.org/settings/api> e cole no
-campo "Chave da API" da página: ela fica só no seu navegador (não vai para o repositório) e dá uma cota própria de
-cerca de mil buscas de palavra-chave por dia.
+Uma palavra-chave combina com a revista quando aparece no nome dela ou nas suas categorias e áreas do Scopus (sem
+diferenciar maiúsculas e acentos). A lista de categorias aparece na página para clicar e acrescentar.
+
+O fator de impacto do JCR (Clarivate) não é aberto. A métrica padrão, citações por artigo em 3 anos (citações recebidas no
+ano pelos artigos e revisões dos três anos anteriores, por documento), é a mais próxima dele, mas não coincide com o JCR.
+
+## Atualizar as tabelas
+
+Scripts em `tools/` (rodam em Python com Playwright e o Chrome instalado):
+
+1. `scrape_qualis.py`: baixa a classificação Qualis do Sucupira, estrato por estrato.
+2. `build_qualis_json.py`: gera `data/qualis.json` a partir do download.
+3. Exporte a tabela do SCImago (journalrank.php?out=xls) e rode `build_scimago_json.py scimago.csv data/scimago.json`.
+
+Depois de trocar os arquivos de dados, aumente `DATA_VERSION` em `app.js` e o `?v=` em `index.html` para os navegadores
+buscarem a versão nova.
 
 ## Publicar no GitHub Pages
 
-1. Crie um repositório (por exemplo `mapa-revistas`) e envie `index.html`, `app.js`, `data/qualis.json` e este README.
-2. Em **Settings → Pages**, escolha *Deploy from a branch*, branch `main`, pasta `/ (root)`.
-3. A página fica em `https://<seu-usuario>.github.io/mapa-revistas/`.
-
-Links de busca podem ser compartilhados: a URL guarda as palavras-chave, o número de revistas, o ano inicial e os
-estratos marcados.
-
-## Atualizar o Qualis
-
-Os scripts de download ficam em `tools/` (`scrape_qualis.py`, que usa Playwright com o Chrome, e `build_qualis_json.py`). Rode o download e gere de novo
-`data/qualis.json` quando a CAPES publicar uma nova classificação.
+Em **Settings → Pages**, escolha *Deploy from a branch*, branch `main`, pasta `/ (root)`.

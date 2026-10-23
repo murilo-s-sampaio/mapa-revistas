@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mapa de Revistas</title>
-<meta name="description" content="Revistas por palavra-chave, impacto e Qualis CAPES">
+<meta name="description" content="Revistas por palavra-chave, impacto (Scopus/SCImago) e Qualis CAPES">
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-/* Layout: one working column; search on top, keyword x impact chart, then the journal table. */
+/* Layout: one working column; search on top, keyword-count x impact chart, then the journal table. */
 :root {
   --bg: #f4f5f7; --surface: #fcfcfb; --ink: #141820; --ink-2: #4b5260; --muted: #7d8491;
   --grid: #e2e4e8; --axis: #c3c7ce; --accent: #2a6fd1; --accent-ink: #ffffff; --ring: rgba(20,24,32,.12);
@@ -30,32 +30,37 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-ui); font-size: 15px; line-height: 1.5; }
-.wrap { max-width: 1160px; margin: 0 auto; padding-block: 28px 48px;
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 48px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid; gap: 18px; }
 header h1 { margin: 0; font-size: 1.7rem; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
-header p { margin: 4px 0 0; color: var(--ink-2); max-width: 72ch; }
+header p { margin: 4px 0 0; color: var(--ink-2); max-width: 74ch; }
 .panel { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 16px; min-width: 0; }
-form { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; }
+form { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
 .field { display: grid; gap: 4px; min-width: 0; }
-.field.ctx { grid-column: 1 / -1; }
 label, .lab { font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
 input, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--axis); border-radius: 7px; padding: 9px 11px; min-width: 0; }
-input[type="number"] { width: 6em; font-family: var(--f-num); }
-input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type="number"] { width: 6.5em; font-family: var(--f-num); }
+input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; grid-column: 1 / -1; }
+.row .lab { min-width: 4.5em; }
 button { font: inherit; font-weight: 500; border-radius: 7px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--axis); background: var(--surface); color: var(--ink); }
-button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-button:disabled { opacity: .55; cursor: default; }
 .qchips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .qchip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: .85rem;
-  border: 1px solid var(--axis); background: transparent; color: var(--ink-2); }
-.qchip[aria-pressed="true"] { background: var(--bg); color: var(--ink); border-color: var(--ink-2); }
-.qchip[aria-pressed="false"] .sw { opacity: .3; }
-.sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
-.sw.none { background: transparent !important; border: 2px solid var(--muted); width: 9px; height: 9px; }
-.status { color: var(--ink-2); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  border: 1px solid var(--axis); background: transparent; color: var(--muted); }
+.qchip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.qchip[aria-pressed="true"]::before { content: "✓"; font-weight: 600; margin-right: -2px; }
+.qchip[aria-pressed="false"] { text-decoration: line-through; text-decoration-color: var(--axis); }
+.qchip[aria-pressed="false"] .sw { opacity: .35; }
+.qchip.action { color: var(--ink-2); border-style: dashed; }
+.sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1.5px var(--surface); }
+.sw.none { background: transparent !important; border: 2px solid currentColor; width: 9px; height: 9px; box-shadow: none; }
+.status { color: var(--ink-2); font-size: .9rem; font-variant-numeric: tabular-nums; margin: 0; }
 .status.error { color: #d03b3b; }
+details { grid-column: 1 / -1; font-size: .88rem; color: var(--ink-2); }
+summary { cursor: pointer; color: var(--accent); }
+.catlist { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; max-height: 220px; overflow-y: auto; }
+.cat { font-size: .78rem; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--ring); background: var(--bg); color: var(--ink-2); font-weight: 400; }
 .chart-head, .table-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
 .ctrls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -66,72 +71,59 @@ h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
 svg { display: block; width: 100%; height: auto; overflow: visible; }
 svg text { fill: var(--muted); font-family: var(--f-ui); font-size: 11px; }
 svg .tick { font-family: var(--f-num); }
-svg .kw { fill: var(--ink); font-size: 12px; font-weight: 500; }
+svg .kw { fill: var(--ink); font-size: 13px; font-weight: 600; font-family: var(--f-num); }
 svg .lbl { fill: var(--ink-2); font-size: 10.5px; }
 .tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--ring);
-  border-radius: 8px; padding: 8px 10px; font-size: .82rem; box-shadow: 0 6px 18px rgba(0,0,0,.16); max-width: 290px; z-index: 5; }
+  border-radius: 8px; padding: 8px 10px; font-size: .82rem; box-shadow: 0 6px 18px rgba(0,0,0,.16); max-width: 300px; z-index: 5; }
 .tip b { display: block; font-weight: 600; margin-bottom: 2px; }
 .mono { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
-.note { font-size: .84rem; color: var(--ink-2); max-width: 85ch; margin: 10px 0 0; }
+.muted { color: var(--muted); }
+.note { font-size: .84rem; color: var(--ink-2); max-width: 88ch; margin: 10px 0 0; }
 .tbl { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: .88rem; }
 th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
 th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; cursor: pointer; white-space: nowrap; user-select: none; }
 td.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.small { font-size: .78rem; color: var(--ink-2); min-width: 14em; }
 td a { color: var(--accent); }
 .qbadge { display: inline-block; min-width: 2.4em; text-align: center; padding: 1px 7px; border-radius: 6px; font-weight: 600; font-size: .8rem; font-family: var(--f-num); }
-.kwtag { display: inline-block; margin: 0 8px 2px 0; white-space: nowrap; color: var(--ink-2); }
 footer { font-size: .8rem; color: var(--muted); }
 footer a { color: var(--muted); }
-@media (max-width: 640px) { form { grid-template-columns: 1fr 1fr; } .field.kw { grid-column: 1 / -1; } }
+@media (max-width: 640px) { form { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Mapa de Revistas</h1>
-    <p>Escreva palavras-chave. A página encontra as revistas que publicaram sobre elas, com o impacto em dois anos e a
-      classificação Qualis CAPES. Cada revista é um ponto: quanto mais à direita, em mais palavras-chave ela publica.</p>
+    <p>Escreva palavras-chave de escopo. Cada revista que combina com pelo menos uma vira um ponto: no eixo horizontal, com
+      quantas palavras-chave ela combina; no vertical, o impacto. A cor é o estrato Qualis CAPES.</p>
   </header>
 
   <section class="panel">
     <form id="f">
-      <div class="field kw">
-        <label for="kw">Palavras-chave (separe por vírgula)</label>
+      <div class="field">
+        <label for="kw">Palavras-chave (em inglês, separe por vírgula)</label>
         <input id="kw" type="text" autocomplete="off"
-          value="spatial frequency domain imaging, tissue optical properties, Monte Carlo simulation, skin pigmentation, photodynamic therapy, photobiomodulation">
+          value="optics, photonics, biomedical engineering, dermatology, radiology, spectroscopy">
       </div>
       <div class="field">
         <label for="n">Número de revistas</label>
-        <input id="n" type="number" min="1" max="300" step="1" value="30">
+        <input id="n" type="number" min="1" max="500" step="1" value="40">
       </div>
-      <div class="field">
-        <label for="since">Artigos desde</label>
-        <select id="since"></select>
-      </div>
-      <div class="row">
-        <span class="lab">Qualis</span>
-        <div class="qchips" id="qchips"></div>
-      </div>
-      <div class="row">
-        <span class="lab">Acesso</span>
-        <div class="qchips" id="achips"></div>
-      </div>
-      <div class="field ctx">
-        <label for="apikey">Chave da API OpenAlex (opcional, gratuita; fica só neste navegador)</label>
-        <input id="apikey" type="password" autocomplete="off" spellcheck="false"
-          placeholder="Sem chave, a cota é dividida por todos na sua rede. Crie a sua em openalex.org/settings/api">
-      </div>
-      <div class="row">
-        <button class="primary" id="go" type="submit">Buscar revistas</button>
-        <span class="status" id="status" role="status"></span>
-      </div>
+      <div class="row"><span class="lab">Qualis</span><div class="qchips" id="qchips"></div></div>
+      <div class="row"><span class="lab">Acesso</span><div class="qchips" id="achips"></div></div>
+      <details>
+        <summary>Categorias do Scopus (clique numa para acrescentar às palavras-chave)</summary>
+        <div class="catlist" id="catlist"></div>
+      </details>
+      <p class="status" id="status" role="status"></p>
     </form>
   </section>
 
   <section class="panel">
     <div class="chart-head">
-      <h2>Número de palavras-chave × impacto</h2>
+      <h2>Palavras-chave que combinam × impacto</h2>
       <div class="ctrls">
         <label for="metric" class="lab">Eixo vertical</label>
         <select id="metric"></select>
@@ -143,12 +135,12 @@ footer a { color: var(--muted); }
     </div>
     <div class="chart" id="chart"><div class="tip" id="tip" hidden></div></div>
     <p class="status" id="missing"></p>
-    <p class="note">Eixo horizontal: em quantas das suas palavras-chave a revista tem pelo menos um artigo (frase no título
-      ou no resumo, desde o ano escolhido). Os pontos com o mesmo número ficam levemente espalhados para não se
-      sobreporem. Entram no gráfico as revistas que cobrem mais palavras-chave, até o número escolhido. A cor é o estrato
-      Qualis; passe o mouse sobre um ponto para ver os detalhes ou clique para abrir a revista.</p>
-    <p class="note">O fator de impacto do JCR (Clarivate) não é aberto. A métrica padrão aqui, citações por artigo em 3 anos
-      (Scopus, via SCImago), é a mais próxima dele, mas os números não coincidem com os do JCR.</p>
+    <p class="note">Uma palavra-chave combina com a revista quando aparece no nome dela ou nas suas categorias e áreas do
+      Scopus. Pontos com o mesmo número ficam levemente espalhados para não se sobreporem. Entram no gráfico as revistas que
+      combinam com mais palavras-chave e, no empate, as de maior impacto, até o número escolhido. Passe o mouse sobre um
+      ponto para ver os detalhes ou clique para abrir a revista no SCImago.</p>
+    <p class="note">O fator de impacto do JCR (Clarivate) não é aberto. A métrica padrão, citações por artigo em 3 anos
+      (Scopus), é a mais próxima dele, mas os números não coincidem com os do JCR.</p>
   </section>
 
   <section class="panel">
@@ -156,9 +148,9 @@ footer a { color: var(--muted); }
     <div class="tbl">
       <table>
         <thead><tr>
-          <th data-k="name">Revista</th><th data-k="q">Qualis</th><th data-k="sq">Quartil SJR</th>
-          <th data-k="c3">Cit./artigo 3 anos</th><th data-k="sjr">SJR</th><th data-k="if2">OpenAlex 2 anos</th><th data-k="h">Índice h</th>
-          <th data-k="nkw">Palavras-chave</th><th data-k="total">Artigos por palavra-chave</th><th data-k="parent">Área mãe (Qualis)</th>
+          <th data-k="name">Revista</th><th data-k="q">Qualis</th><th data-k="sq">Quartil</th>
+          <th data-k="c3">Cit./artigo 3 anos</th><th data-k="c2">Cit./doc 2 anos</th><th data-k="sjr">SJR</th><th data-k="h">Índice h</th>
+          <th data-k="nkw">Combina</th><th>Palavras-chave</th><th>Categorias (Scopus)</th><th data-k="parent">Área mãe (Qualis)</th>
           <th data-k="pub">Editora</th><th data-k="open">Acesso</th>
         </tr></thead>
         <tbody id="rows"></tbody>
@@ -166,17 +158,16 @@ footer a { color: var(--muted); }
     </div>
   </section>
 
-  <footer id="foot">
-    Fontes: artigos por palavra-chave da <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (consulta ao vivo);
-    citações, SJR, quartil e acesso aberto do <a href="https://www.scimagojr.com" target="_blank" rel="noopener">SCImago Journal &amp; Country Rank</a> (Scopus);
-    classificação Qualis da <a href="https://sucupira.capes.gov.br" target="_blank" rel="noopener">Plataforma Sucupira (CAPES)</a>.
-    Citações por artigo em 3 anos: citações recebidas no ano pelos artigos e revisões dos três anos anteriores, divididas pelo
-    número desses documentos. Impacto em 2 anos da OpenAlex: mesma ideia em dois anos, mas dividindo por todos os documentos
-    (inclusive resumos de congresso), o que baixa algumas revistas. Híbrida ou assinatura: revista que não é inteiramente de
-    acesso aberto (a maioria aceita acesso aberto pago por artigo).
+  <footer>
+    Fontes: revistas, citações, SJR, quartil, categorias e acesso aberto do
+    <a href="https://www.scimagojr.com" target="_blank" rel="noopener">SCImago Journal &amp; Country Rank</a> (base Scopus);
+    classificação Qualis da <a href="https://sucupira.capes.gov.br" target="_blank" rel="noopener">Plataforma Sucupira (CAPES)</a>,
+    ligada pelo ISSN. Tudo vem de tabelas baixadas, sem consulta externa. Citações por artigo em 3 anos: citações recebidas
+    no ano pelos artigos e revisões dos três anos anteriores, divididas pelo número desses documentos. Híbrida ou assinatura:
+    revista que não é inteiramente de acesso aberto (a maioria aceita acesso aberto pago por artigo).
     <span id="qmeta"></span>
   </footer>
 </div>
-<script src="app.js?v=2026-10-23c"></script>
+<script src="app.js?v=2026-10-23d"></script>
 </body>
 </html>
