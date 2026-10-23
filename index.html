@@ -10,22 +10,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-/* Layout: one working column; search on top, keyword-count x impact chart, then the journal table. */
+/* Layout: one working column; search on top, keyword-count x impact chart, then the journal table.
+   Light theme only, by the owner's choice. */
 :root {
-  --bg: #f4f5f7; --surface: #fcfcfb; --ink: #141820; --ink-2: #4b5260; --muted: #7d8491;
-  --grid: #e2e4e8; --axis: #c3c7ce; --accent: #2a6fd1; --accent-ink: #ffffff; --ring: rgba(20,24,32,.12);
+  --bg: #f7f8fa; --surface: #ffffff; --ink: #141820; --ink-2: #4b5260; --muted: #7d8491;
+  --grid: #e8eaee; --axis: #c9cdd4; --accent: #2a6fd1; --accent-ink: #ffffff; --ring: rgba(20,24,32,.10);
   --qa1: #104281; --qa2: #256abf; --qa3: #3987e5; --qa4: #86b6ef; --qb: #8f949c; --qc: #c4c8ce;
   --f-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e1013; --surface: #17191d; --ink: #eef0f3; --ink-2: #c2c6cd; --muted: #8b919b;
-    --grid: #2a2d32; --axis: #3b3f46; --accent: #5b9bf0; --accent-ink: #0e1013; --ring: rgba(255,255,255,.12);
-    --qa1: #b7d3f6; --qa2: #6da7ec; --qa3: #3987e5; --qa4: #1c5cab; --qb: #7d838c; --qc: #4b5058;
-    color-scheme: dark;
-  }
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
