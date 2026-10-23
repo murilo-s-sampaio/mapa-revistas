@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mapa de Revistas</title>
+<meta name="description" content="Revistas por palavra-chave, impacto e Qualis CAPES">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one working column; search on top, keyword x impact chart, then the journal table. */
+:root {
+  --bg: #f4f5f7; --surface: #fcfcfb; --ink: #141820; --ink-2: #4b5260; --muted: #7d8491;
+  --grid: #e2e4e8; --axis: #c3c7ce; --accent: #2a6fd1; --accent-ink: #ffffff; --ring: rgba(20,24,32,.12);
+  --qa1: #104281; --qa2: #256abf; --qa3: #3987e5; --qa4: #86b6ef; --qb: #8f949c; --qc: #c4c8ce;
+  --f-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1013; --surface: #17191d; --ink: #eef0f3; --ink-2: #c2c6cd; --muted: #8b919b;
+    --grid: #2a2d32; --axis: #3b3f46; --accent: #5b9bf0; --accent-ink: #0e1013; --ring: rgba(255,255,255,.12);
+    --qa1: #b7d3f6; --qa2: #6da7ec; --qa3: #3987e5; --qa4: #1c5cab; --qb: #7d838c; --qc: #4b5058;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-ui); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1160px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px; }
+header h1 { margin: 0; font-size: 1.7rem; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+header p { margin: 4px 0 0; color: var(--ink-2); max-width: 72ch; }
+.panel { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 16px; min-width: 0; }
+form { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; }
+.field { display: grid; gap: 4px; min-width: 0; }
+label, .lab { font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
+input, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--axis); border-radius: 7px; padding: 9px 11px; min-width: 0; }
+input[type="number"] { width: 6em; font-family: var(--f-num); }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; grid-column: 1 / -1; }
+button { font: inherit; font-weight: 500; border-radius: 7px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--axis); background: var(--surface); color: var(--ink); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:disabled { opacity: .55; cursor: default; }
+.qchips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.qchip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: .85rem;
+  border: 1px solid var(--axis); background: transparent; color: var(--ink-2); }
+.qchip[aria-pressed="true"] { background: var(--bg); color: var(--ink); border-color: var(--ink-2); }
+.qchip[aria-pressed="false"] .sw { opacity: .3; }
+.sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.sw.none { background: transparent !important; border: 2px solid var(--muted); width: 9px; height: 9px; }
+.status { color: var(--ink-2); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.status.error { color: #d03b3b; }
+.chart-head, .table-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 5px 10px; font-size: .82rem; background: transparent; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.chart { position: relative; width: 100%; min-height: 200px; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { fill: var(--muted); font-family: var(--f-ui); font-size: 11px; }
+svg .tick { font-family: var(--f-num); }
+svg .kw { fill: var(--ink); font-size: 12px; font-weight: 500; }
+svg .lbl { fill: var(--ink-2); font-size: 10.5px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--ring);
+  border-radius: 8px; padding: 8px 10px; font-size: .82rem; box-shadow: 0 6px 18px rgba(0,0,0,.16); max-width: 290px; z-index: 5; }
+.tip b { display: block; font-weight: 600; margin-bottom: 2px; }
+.mono { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.note { font-size: .84rem; color: var(--ink-2); max-width: 85ch; margin: 10px 0 0; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; cursor: pointer; white-space: nowrap; user-select: none; }
+td.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td a { color: var(--accent); }
+.qbadge { display: inline-block; min-width: 2.4em; text-align: center; padding: 1px 7px; border-radius: 6px; font-weight: 600; font-size: .8rem; font-family: var(--f-num); }
+.kwtag { display: inline-block; margin: 0 8px 2px 0; white-space: nowrap; color: var(--ink-2); }
+footer { font-size: .8rem; color: var(--muted); }
+footer a { color: var(--muted); }
+@media (max-width: 640px) { form { grid-template-columns: 1fr 1fr; } .field.kw { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Mapa de Revistas</h1>
+    <p>Escreva palavras-chave. Para cada uma, a página encontra as revistas que mais publicaram sobre o tema, com o impacto
+      em dois anos e a classificação Qualis CAPES. Cada palavra-chave vira uma coluna do gráfico.</p>
+  </header>
+
+  <section class="panel">
+    <form id="f">
+      <div class="field kw">
+        <label for="kw">Palavras-chave (separe por vírgula)</label>
+        <input id="kw" type="text" autocomplete="off"
+          value="spatial frequency domain imaging, Monte Carlo skin, skin pigmentation, photodynamic therapy dosimetry">
+      </div>
+      <div class="field">
+        <label for="n">Revistas por palavra</label>
+        <input id="n" type="number" min="1" max="40" step="1" value="10">
+      </div>
+      <div class="field">
+        <label for="since">Artigos desde</label>
+        <select id="since"></select>
+      </div>
+      <div class="row">
+        <span class="lab">Qualis</span>
+        <div class="qchips" id="qchips"></div>
+      </div>
+      <div class="row">
+        <button class="primary" id="go" type="submit">Buscar revistas</button>
+        <span class="status" id="status" role="status"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="chart-head">
+      <h2>Palavras-chave × impacto</h2>
+      <div class="seg" role="group" aria-label="Escala do eixo vertical">
+        <button type="button" id="ylog" aria-pressed="true">log</button>
+        <button type="button" id="ylin" aria-pressed="false">linear</button>
+      </div>
+    </div>
+    <div class="chart" id="chart"><div class="tip" id="tip" hidden></div></div>
+    <p class="note">Dentro de cada coluna, quanto mais à direita, mais artigos a revista publicou sobre aquela palavra-chave.
+      A cor é o estrato Qualis. Passe o mouse sobre um ponto para ver os detalhes.</p>
+  </section>
+
+  <section class="panel">
+    <div class="table-head"><h2>Revistas</h2><span class="status" id="count"></span></div>
+    <div class="tbl">
+      <table>
+        <thead><tr>
+          <th data-k="name">Revista</th><th data-k="q">Qualis</th><th data-k="if2">Impacto 2 anos</th><th data-k="h">Índice h</th>
+          <th data-k="total">Artigos sobre os temas</th><th data-k="parent">Área mãe (Qualis)</th><th data-k="pub">Editora</th><th data-k="oa">Acesso</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer id="foot">
+    Fontes: artigos e impacto em dois anos da <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a>
+    (consulta ao vivo); classificação Qualis da <a href="https://sucupira.capes.gov.br" target="_blank" rel="noopener">Plataforma Sucupira (CAPES)</a>.
+    O impacto em dois anos da OpenAlex é a média de citações dos artigos publicados nos dois anos anteriores, a mesma ideia do
+    fator de impacto do JCR; como usa outra base, costuma dar valores um pouco maiores, e revistas que publicam muitos
+    resumos de congresso podem aparecer com impacto mais baixo.
+    <span id="qmeta"></span>
+  </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
