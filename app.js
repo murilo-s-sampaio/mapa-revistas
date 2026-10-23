@@ -5,7 +5,7 @@
 "use strict";
 
 const STRATA = ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C"];
-const DATA_VERSION = "2026-10-23d";      // bump when data/*.json change, so browsers fetch the new files
+const DATA_VERSION = "2026-10-23e";      // bump when data/*.json change, so browsers fetch the new files
 const METRICS = {
   c3: { label: "Citações por artigo, 3 anos (Scopus)", get: (j) => j.c3, d: 2 },
   c2: { label: "Citações por documento, 2 anos (Scopus)", get: (j) => j.c2, d: 2 },
@@ -28,6 +28,11 @@ let yLog = store.get("mr.ylog", true);
 let yMetric = METRICS[store.get("mr.y", "c3")] ? store.get("mr.y", "c3") : "c3";
 let sortKey = "nkw", sortDir = -1;
 let matched = [], K = 0, keywords = [];
+let vocab = [];                          // indexed terms: [{term, kind, n}] from categories, areas and journal titles
+const STOP = new Set(("journal journals international research review reviews letters letter advances annals archives " +
+  "bulletin proceedings transactions acta revista studies study series part section new current open society " +
+  "and for the of in on de la et des der und del e y do da di a an to with from by at or its world global " +
+  "frontiers reports report communications perspectives topics trends issues").split(" "));
 
 function qColor(q) {
   if (q === "A1") return "var(--qa1)";
@@ -55,21 +60,96 @@ async function loadData() {
       hayTitle: norm(name), hayScope: norm(catNames.concat(areaNames).join(" | ")),
     };
   });
+  buildVocab(sc);
   const notes = [`SCImago ${sc.meta.year}: ${journals.length.toLocaleString("pt-BR")} revistas.`];
   if (ql.meta?.event) notes.push(`Qualis ${ql.meta.event}, lista consultada em ${ql.meta.consulted}.`);
   $("qmeta").textContent = notes.join(" ");
   $("catlist").innerHTML = cats.slice().sort((a, b) => a.localeCompare(b)).map((c) =>
     `<button type="button" class="cat">${esc(c)}</button>`).join("");
-  $("catlist").querySelectorAll(".cat").forEach((b) => b.addEventListener("click", () => {
-    const cur = $("kw").value.split(",").map((s) => s.trim()).filter(Boolean);
-    if (!cur.includes(b.textContent)) cur.push(b.textContent);
-    $("kw").value = cur.join(", "); update();
+  $("catlist").querySelectorAll(".cat").forEach((b) => b.addEventListener("click", () => addKeyword(b.textContent)));
+}
+
+/* ---------- indexed vocabulary and keyword search bar ---------- */
+function buildVocab(sc) {
+  const count = new Map();                // normalized term -> {term, kind, n}
+  const bump = (term, kind) => {
+    const k = norm(term);
+    const e = count.get(k);
+    if (e) e.n++; else count.set(k, { term, kind, n: 1 });
+  };
+  sc.j.forEach((r) => { for (const i of r[10]) bump(sc.cats[i], "categoria"); for (const i of r[11]) bump(sc.areas[i], "área"); });
+  const titleTerms = new Map();
+  for (const j of journals) {
+    const words = j.name.replace(/[^\p{L}\p{N}\s-]/gu, " ").split(/\s+/).filter(Boolean);
+    const seen = new Set();
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i], wl = norm(w);
+      if (wl.length >= 4 && !STOP.has(wl) && !/^\d+$/.test(wl)) seen.add(w.toLowerCase());
+      const w2 = words[i + 1];
+      if (w2 && !STOP.has(wl) && !STOP.has(norm(w2)) && wl.length > 2 && norm(w2).length > 2) seen.add(`${w} ${w2}`.toLowerCase());
+    }
+    for (const t of seen) titleTerms.set(t, (titleTerms.get(t) || 0) + 1);
+  }
+  for (const [t, n] of titleTerms) {
+    if (n < 2) continue;
+    const k = norm(t), e = count.get(k);
+    if (!e) count.set(k, { term: t, kind: "nome", n });
+    else e.n = Math.max(e.n, n);
+  }
+  // suggestion counts are journals having the category/area or the title word; the chip shows the exact match count
+  vocab = [...count.values()].sort((a, b) => b.n - a.n);
+}
+function suggestions(text) {
+  const t = norm(text.trim());
+  if (!t) return [];
+  const chosen = new Set(keywords.map(norm));
+  const hits = [];
+  for (const v of vocab) {
+    const k = norm(v.term);
+    if (chosen.has(k)) continue;
+    const at = k.indexOf(t);
+    if (at < 0 || (at > 0 && /[a-z0-9]/.test(k[at - 1]))) continue;      // match at the start of a word only
+    hits.push({ ...v, prefix: at === 0 });
+  }
+  return hits.sort((a, b) => b.n - a.n || b.prefix - a.prefix).slice(0, 12);
+}
+let sugg = [], suggAt = -1;
+function drawSuggest() {
+  const box = $("suggest"), text = $("kwInput").value;
+  sugg = suggestions(text);
+  if (!text.trim()) { box.hidden = true; return; }
+  box.hidden = false;
+  if (!sugg.length) {
+    box.innerHTML = `<div class="sg empty">“${esc(text)}” não aparece no nome nem nas categorias de nenhuma revista. ` +
+      "Tente outro termo, por extenso e em inglês.</div>";
+    return;
+  }
+  box.innerHTML = sugg.map((v, i) => `<div class="sg${i === suggAt ? " on" : ""}" role="option" data-i="${i}">` +
+    `<span>${esc(v.term)}</span><span class="kind">${v.kind}</span><span class="mono n">${v.n.toLocaleString("pt-BR")}</span></div>`).join("");
+  box.querySelectorAll(".sg[data-i]").forEach((d) => d.addEventListener("mousedown", (e) => {
+    e.preventDefault(); addKeyword(sugg[Number(d.dataset.i)].term);
+  }));
+}
+function addKeyword(term) {
+  const t = term.trim();
+  if (t && !keywords.map(norm).includes(norm(t))) keywords.push(t);
+  $("kwInput").value = ""; suggAt = -1; $("suggest").hidden = true;
+  drawKeywords(); update();
+}
+function drawKeywords() {
+  $("kwchips").innerHTML = keywords.map((k, i) => {
+    const n = journals.filter((j) => j.hayTitle.includes(norm(k)) || j.hayScope.includes(norm(k))).length;
+    return `<span class="kwchip${n ? "" : " zero"}">${esc(k)} <span class="mono">${n}</span>` +
+      `<button type="button" aria-label="Remover ${esc(k)}" data-i="${i}">×</button></span>`;
+  }).join("");
+  $("kwchips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    keywords.splice(Number(b.dataset.i), 1); drawKeywords(); update();
   }));
 }
 
 /* ---------- matching and selection ---------- */
 function update() {
-  keywords = $("kw").value.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 15);
+  keywords = keywords.slice(0, 15);
   K = keywords.length;
   const keys = keywords.map(norm);
   matched = [];
@@ -247,13 +327,14 @@ function drawChips() {
 function afterFilter() { store.set("mr.q", [...shownQ]); store.set("mr.a2", [...shownA]); drawChips(); syncURL(); render(); }
 
 function syncURL() {
-  const p = new URLSearchParams({ q: $("kw").value, n: $("n").value, qualis: [...shownQ].join(","),
+  const p = new URLSearchParams({ q: keywords.join(","), n: $("n").value, qualis: [...shownQ].join(","),
     acesso: [...shownA].join(","), y: yMetric });
   history.replaceState(null, "", "?" + p.toString());
 }
 function readURL() {
   const p = new URLSearchParams(location.search);
-  if (p.get("q")) $("kw").value = p.get("q");
+  keywords = (p.get("q") || "optics,photonics,biomedical engineering,dermatology,radiology,spectroscopy")
+    .split(",").map((s) => s.trim()).filter(Boolean);
   if (p.get("n")) $("n").value = p.get("n");
   if (p.get("qualis")) shownQ = new Set(p.get("qualis").split(",").filter((q) => STRATA.includes(q) || q === "none"));
   if (p.get("acesso")) shownA = new Set(p.get("acesso").split(",").filter((a) => a === "open" || a === "hybrid"));
@@ -264,8 +345,23 @@ function readURL() {
 (async function init() {
   $("metric").innerHTML = Object.entries(METRICS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
   readURL(); drawChips();
-  $("f").addEventListener("submit", (e) => { e.preventDefault(); update(); });
-  let kt; $("kw").addEventListener("input", () => { clearTimeout(kt); kt = setTimeout(update, 350); });
+  $("f").addEventListener("submit", (e) => e.preventDefault());
+  const inp = $("kwInput");
+  inp.addEventListener("input", () => { suggAt = -1; drawSuggest(); });
+  inp.addEventListener("focus", drawSuggest);
+  inp.addEventListener("blur", () => setTimeout(() => ($("suggest").hidden = true), 120));
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault(); if (!sugg.length) return;
+      suggAt = (suggAt + (e.key === "ArrowDown" ? 1 : -1) + sugg.length) % sugg.length; drawSuggest();
+    } else if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      if (suggAt >= 0 && sugg[suggAt]) addKeyword(sugg[suggAt].term);
+      else if (sugg.length) addKeyword((sugg.find((v) => norm(v.term) === norm(inp.value.trim())) || sugg[0]).term);
+    } else if (e.key === "Backspace" && !inp.value && keywords.length) {
+      keywords.pop(); drawKeywords(); update();
+    } else if (e.key === "Escape") { $("suggest").hidden = true; }
+  });
   $("n").addEventListener("change", () => { syncURL(); render(); });
   $("metric").addEventListener("change", () => { yMetric = $("metric").value; store.set("mr.y", yMetric); syncURL(); render(); });
   $("ylog").addEventListener("click", () => { yLog = true; store.set("mr.ylog", true); render(); });
@@ -279,5 +375,5 @@ function readURL() {
   $("status").textContent = "Carregando as tabelas…";
   try { await loadData(); $("status").textContent = ""; }
   catch { $("status").textContent = "Não foi possível carregar data/scimago.json."; $("status").classList.add("error"); return; }
-  update();
+  drawKeywords(); update();
 })();

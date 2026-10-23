@@ -55,6 +55,24 @@ button { font: inherit; font-weight: 500; border-radius: 7px; padding: 9px 16px;
 .qchip.action { color: var(--ink-2); border-style: dashed; }
 .sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1.5px var(--surface); }
 .sw.none { background: transparent !important; border: 2px solid currentColor; width: 9px; height: 9px; box-shadow: none; }
+.kwfield { position: relative; }
+.kwbox { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); border: 1px solid var(--axis);
+  border-radius: 7px; padding: 6px 8px; min-height: 44px; }
+.kwbox:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.kwbox input { border: 0; background: transparent; padding: 4px; flex: 1 1 12em; min-width: 8em; outline: none; }
+.kwchips { display: contents; }
+.kwchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 999px; font-size: .86rem;
+  background: var(--surface); border: 1px solid var(--axis); }
+.kwchip .mono { color: var(--muted); font-size: .78rem; }
+.kwchip.zero { border-color: #d03b3b; color: #d03b3b; }
+.kwchip button { border: 0; background: transparent; padding: 0 6px; font-size: 1rem; line-height: 1; color: var(--muted); }
+.suggest { position: absolute; z-index: 10; left: 0; right: 0; top: 100%; margin-top: 4px; background: var(--surface);
+  border: 1px solid var(--ring); border-radius: 8px; box-shadow: 0 8px 22px rgba(0,0,0,.16); max-height: 360px; overflow-y: auto; }
+.sg { display: grid; grid-template-columns: minmax(0, 1fr) auto 4.5em; gap: 10px; align-items: baseline; padding: 7px 12px; cursor: pointer; }
+.sg:hover, .sg.on { background: var(--bg); }
+.sg .kind { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.sg .n { text-align: right; color: var(--ink-2); font-size: .82rem; }
+.sg.empty { display: block; color: var(--ink-2); cursor: default; font-size: .88rem; }
 .status { color: var(--ink-2); font-size: .9rem; font-variant-numeric: tabular-nums; margin: 0; }
 .status.error { color: #d03b3b; }
 details { grid-column: 1 / -1; font-size: .88rem; color: var(--ink-2); }
@@ -96,16 +114,20 @@ footer a { color: var(--muted); }
 <div class="wrap">
   <header>
     <h1>Mapa de Revistas</h1>
-    <p>Escreva palavras-chave de escopo. Cada revista que combina com pelo menos uma vira um ponto: no eixo horizontal, com
+    <p>Escolha palavras-chave de escopo na busca. Cada revista que combina com pelo menos uma vira um ponto: no eixo horizontal, com
       quantas palavras-chave ela combina; no vertical, o impacto. A cor é o estrato Qualis CAPES.</p>
   </header>
 
   <section class="panel">
     <form id="f">
-      <div class="field">
-        <label for="kw">Palavras-chave (em inglês, separe por vírgula)</label>
-        <input id="kw" type="text" autocomplete="off"
-          value="optics, photonics, biomedical engineering, dermatology, radiology, spectroscopy">
+      <div class="field kwfield">
+        <label for="kwInput">Palavras-chave (digite e escolha uma sugestão)</label>
+        <div class="kwbox">
+          <div class="kwchips" id="kwchips"></div>
+          <input id="kwInput" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list"
+            aria-controls="suggest" placeholder="ex.: optic, dermat, biomedical…">
+        </div>
+        <div class="suggest" id="suggest" role="listbox" hidden></div>
       </div>
       <div class="field">
         <label for="n">Número de revistas</label>
@@ -136,7 +158,8 @@ footer a { color: var(--muted); }
     <div class="chart" id="chart"><div class="tip" id="tip" hidden></div></div>
     <p class="status" id="missing"></p>
     <p class="note">Uma palavra-chave combina com a revista quando aparece no nome dela ou nas suas categorias e áreas do
-      Scopus. Pontos com o mesmo número ficam levemente espalhados para não se sobreporem. Entram no gráfico as revistas que
+      Scopus. As sugestões da busca mostram só termos que existem nessas tabelas, com o número de revistas; o número no
+      chip de cada palavra-chave é o total exato de revistas que combinam. Pontos com o mesmo número ficam levemente espalhados para não se sobreporem. Entram no gráfico as revistas que
       combinam com mais palavras-chave e, no empate, as de maior impacto, até o número escolhido. Passe o mouse sobre um
       ponto para ver os detalhes ou clique para abrir a revista no SCImago.</p>
     <p class="note">O fator de impacto do JCR (Clarivate) não é aberto. A métrica padrão, citações por artigo em 3 anos
@@ -168,6 +191,6 @@ footer a { color: var(--muted); }
     <span id="qmeta"></span>
   </footer>
 </div>
-<script src="app.js?v=2026-10-23d"></script>
+<script src="app.js?v=2026-10-23e"></script>
 </body>
 </html>
