@@ -57,6 +57,7 @@ button:disabled { opacity: .55; cursor: default; }
 .status.error { color: #d03b3b; }
 .chart-head, .table-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.ctrls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 7px; overflow: hidden; }
 .seg button { border: 0; border-radius: 0; padding: 5px 10px; font-size: .82rem; background: transparent; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
@@ -112,6 +113,10 @@ footer a { color: var(--muted); }
         <div class="qchips" id="qchips"></div>
       </div>
       <div class="row">
+        <span class="lab">Acesso</span>
+        <div class="qchips" id="achips"></div>
+      </div>
+      <div class="row">
         <button class="primary" id="go" type="submit">Buscar revistas</button>
         <span class="status" id="status" role="status"></span>
       </div>
@@ -120,17 +125,24 @@ footer a { color: var(--muted); }
 
   <section class="panel">
     <div class="chart-head">
-      <h2>Palavras-chave × impacto</h2>
-      <div class="seg" role="group" aria-label="Escala do eixo vertical">
-        <button type="button" id="ylog" aria-pressed="true">log</button>
-        <button type="button" id="ylin" aria-pressed="false">linear</button>
+      <h2>Número de palavras-chave × impacto</h2>
+      <div class="ctrls">
+        <label for="metric" class="lab">Eixo vertical</label>
+        <select id="metric"></select>
+        <div class="seg" role="group" aria-label="Escala do eixo vertical">
+          <button type="button" id="ylog" aria-pressed="true">log</button>
+          <button type="button" id="ylin" aria-pressed="false">linear</button>
+        </div>
       </div>
     </div>
     <div class="chart" id="chart"><div class="tip" id="tip" hidden></div></div>
+    <p class="status" id="missing"></p>
     <p class="note">Eixo horizontal: em quantas das suas palavras-chave a revista tem pelo menos um artigo (frase no título
-      ou no resumo, desde o ano escolhido). Dentro de cada faixa, quanto mais à direita, mais artigos no total sobre os
-      temas. Entram no gráfico as revistas que cobrem mais palavras-chave, até o número escolhido. A cor é o estrato
+      ou no resumo, desde o ano escolhido). Os pontos com o mesmo número ficam levemente espalhados para não se
+      sobreporem. Entram no gráfico as revistas que cobrem mais palavras-chave, até o número escolhido. A cor é o estrato
       Qualis; passe o mouse sobre um ponto para ver os detalhes ou clique para abrir a revista.</p>
+    <p class="note">O fator de impacto do JCR (Clarivate) não é aberto. A métrica padrão aqui, citações por artigo em 3 anos
+      (Scopus, via SCImago), é a mais próxima dele, mas os números não coincidem com os do JCR.</p>
   </section>
 
   <section class="panel">
@@ -138,8 +150,10 @@ footer a { color: var(--muted); }
     <div class="tbl">
       <table>
         <thead><tr>
-          <th data-k="name">Revista</th><th data-k="q">Qualis</th><th data-k="if2">Impacto 2 anos</th><th data-k="h">Índice h</th>
-          <th data-k="nkw">Palavras-chave</th><th data-k="total">Artigos por palavra-chave</th><th data-k="parent">Área mãe (Qualis)</th><th data-k="pub">Editora</th><th data-k="oa">Acesso</th>
+          <th data-k="name">Revista</th><th data-k="q">Qualis</th><th data-k="sq">Quartil SJR</th>
+          <th data-k="c3">Cit./artigo 3 anos</th><th data-k="sjr">SJR</th><th data-k="if2">OpenAlex 2 anos</th><th data-k="h">Índice h</th>
+          <th data-k="nkw">Palavras-chave</th><th data-k="total">Artigos por palavra-chave</th><th data-k="parent">Área mãe (Qualis)</th>
+          <th data-k="pub">Editora</th><th data-k="open">Acesso</th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>
@@ -147,14 +161,16 @@ footer a { color: var(--muted); }
   </section>
 
   <footer id="foot">
-    Fontes: artigos e impacto em dois anos da <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a>
-    (consulta ao vivo); classificação Qualis da <a href="https://sucupira.capes.gov.br" target="_blank" rel="noopener">Plataforma Sucupira (CAPES)</a>.
-    O impacto em dois anos da OpenAlex é a média de citações dos artigos publicados nos dois anos anteriores, a mesma ideia do
-    fator de impacto do JCR; como usa outra base, costuma dar valores um pouco maiores, e revistas que publicam muitos
-    resumos de congresso podem aparecer com impacto mais baixo.
+    Fontes: artigos por palavra-chave da <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (consulta ao vivo);
+    citações, SJR, quartil e acesso aberto do <a href="https://www.scimagojr.com" target="_blank" rel="noopener">SCImago Journal &amp; Country Rank</a> (Scopus);
+    classificação Qualis da <a href="https://sucupira.capes.gov.br" target="_blank" rel="noopener">Plataforma Sucupira (CAPES)</a>.
+    Citações por artigo em 3 anos: citações recebidas no ano pelos artigos e revisões dos três anos anteriores, divididas pelo
+    número desses documentos. Impacto em 2 anos da OpenAlex: mesma ideia em dois anos, mas dividindo por todos os documentos
+    (inclusive resumos de congresso), o que baixa algumas revistas. Híbrida ou assinatura: revista que não é inteiramente de
+    acesso aberto (a maioria aceita acesso aberto pago por artigo).
     <span id="qmeta"></span>
   </footer>
 </div>
-<script src="app.js"></script>
+<script src="app.js?v=2026-10-23b"></script>
 </body>
 </html>
